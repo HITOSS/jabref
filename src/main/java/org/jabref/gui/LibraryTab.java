@@ -143,6 +143,10 @@ public class LibraryTab extends Tab {
 
         this.entryEditor = new EntryEditor(this, externalFileTypes);
 
+        // set LibraryTab ID for drag'n'drop
+        // ID content doesn't matter, the only thing needed is different tabs have different ID
+        this.setId(Long.valueOf(new Random().nextLong()).toString());
+
         Platform.runLater(() -> {
             EasyBind.subscribe(changedProperty, this::updateTabTitle);
             stateManager.getOpenDatabases().addListener((ListChangeListener<BibDatabaseContext>) c ->
@@ -746,6 +750,11 @@ public class LibraryTab extends Tab {
 
     public void paste() {
         mainTable.paste();
+    }
+
+    public void dropEntry(List<BibEntry> entriesToAdd)
+    {
+        mainTable.dropEntry(entriesToAdd);
     }
 
     public void cut() {

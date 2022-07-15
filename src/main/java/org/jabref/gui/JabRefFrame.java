@@ -81,6 +81,7 @@ import org.jabref.gui.theme.ThemeManager;
 import org.jabref.gui.undo.CountingUndoManager;
 import org.jabref.gui.undo.UndoRedoAction;
 import org.jabref.gui.util.BackgroundTask;
+import org.jabref.gui.util.CustomLocalDragboard;
 import org.jabref.gui.util.DefaultTaskExecutor;
 import org.jabref.gui.util.TaskExecutor;
 import org.jabref.logic.autosaveandbackup.AutosaveManager;
@@ -144,6 +145,7 @@ public class JabRefFrame extends BorderPane {
     private Subscription dividerSubscription;
 
     private final TaskExecutor taskExecutor;
+    private final CustomLocalDragboard localDragboard;
 
     public JabRefFrame(Stage mainStage) {
         this.mainStage = mainStage;
@@ -162,6 +164,7 @@ public class JabRefFrame extends BorderPane {
                 }
             }
         });
+        localDragboard = stateManager.getLocalDragboard();
     }
 
     private void initDragAndDrop() {
@@ -193,16 +196,19 @@ public class JabRefFrame extends BorderPane {
             this.getScene().setOnDragEntered(event -> {
                 tabbedPane.lookupAll(".tab").forEach(t -> {
                     t.setOnDragOver(event1 -> {
-                        System.out.println("dragover:" + t.getId());
-                        event1.acceptTransferModes(TransferMode.ANY);
-                        event1.consume();
-                    });
-                    t.setOnDragEntered(event1 -> {
-                        System.out.println("entered:" + t.getId());
-                        event1.consume();
+                        if(event1.getDragboard().hasContent(DragAndDropDataFormats.ENTRIES))
+                        {
+                            event1.acceptTransferModes(TransferMode.COPY);
+                            event1.consume();
+                        }
                     });
                     t.setOnDragDropped(event1 -> {
-                        System.out.println("dropped:" + t.getId());
+                        for(int i=0;i<tabbedPane.getTabs().size();i++)
+                            if(tabbedPane.getTabs().get(i).getId().equals(t.getId()))
+                            {
+                                List<BibEntry> entries = localDragboard.getBibEntries();
+                                ((LibraryTab) tabbedPane.getTabs().get(i)).dropEntry(entries);
+                            }
                         event1.consume();
                     });
                 });
@@ -218,7 +224,6 @@ public class JabRefFrame extends BorderPane {
                 openDatabaseAction.openFiles(bibFiles, true);
                 event.setDropCompleted(true);
                 event.consume();
-                //TODO :?
             });
         });
     }
