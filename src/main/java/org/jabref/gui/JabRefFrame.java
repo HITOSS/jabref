@@ -222,6 +222,34 @@ public class JabRefFrame extends BorderPane {
                 } else {
                     tabbedPane.getTabs().remove(dndIndicator);
                 }
+                // Accept drag entries from MainTable
+                if (event.getDragboard().hasContent(DragAndDropDataFormats.ENTRIES)) {
+                    event.acceptTransferModes(TransferMode.COPY);
+                    event.consume();
+                }
+            });
+
+            this.getScene().setOnDragEntered(event -> {
+                // It is necessary to setOnDragOver for newly opened tabs
+                tabbedPane.lookupAll(".tab").forEach(t -> {
+                    t.setOnDragOver(tabDragEvent -> {
+                        if(tabDragEvent.getDragboard().hasContent(DragAndDropDataFormats.ENTRIES))
+                        {
+                            tabDragEvent.acceptTransferModes(TransferMode.COPY);
+                            tabDragEvent.consume();
+                        }
+                    });
+                    t.setOnDragDropped(tabDragEvent -> {
+                        for (Tab libraryTab : tabbedPane.getTabs()) {
+                            if (libraryTab.getId().equals(t.getId()) &&
+                                    !tabbedPane.getSelectionModel().getSelectedItem().equals(libraryTab)) {
+                                ((LibraryTab) libraryTab).dropEntry(stateManager.getLocalDragboard().getBibEntries());
+                            }
+                        }
+                        tabDragEvent.consume();
+                    });
+                });
+                event.consume();
             });
 
             this.getScene().setOnDragExited(event -> tabbedPane.getTabs().remove(dndIndicator));
@@ -448,8 +476,10 @@ public class JabRefFrame extends BorderPane {
             @Override
             public void invalidated(Observable observable) {
                 if (mainStage.isShowing()) {
-                    setDividerPosition();
-                    observable.removeListener(this);
+                    Platform.runLater(() -> {
+                        setDividerPosition();
+                        observable.removeListener(this);
+                    });
                 }
             }
         });
@@ -472,10 +502,9 @@ public class JabRefFrame extends BorderPane {
     }
 
     private void setDividerPosition() {
-        splitPane.setDividerPositions(prefs.getGuiPreferences().getSidePaneWidth());
         if (mainStage.isShowing() && !sidePane.getChildren().isEmpty()) {
-            dividerSubscription = EasyBind.subscribe(splitPane.getDividers().get(0).positionProperty(),
-                    position -> prefs.getGuiPreferences().setSidePaneWidth(position.doubleValue()));
+            splitPane.setDividerPositions(prefs.getGuiPreferences().getSidePaneWidth() / splitPane.getWidth());
+            dividerSubscription = EasyBind.subscribe(sidePane.widthProperty(), width -> prefs.getGuiPreferences().setSidePaneWidth(width.doubleValue()));
         }
     }
 
